@@ -89,6 +89,7 @@ type Store interface {
 	PostPriority() PostPriorityStore
 	PostAcknowledgement() PostAcknowledgementStore
 	PostPersistentNotification() PostPersistentNotificationStore
+	PostReadReceipt() PostReadReceiptStore
 	DesktopTokens() DesktopTokensStore
 	ChannelBookmark() ChannelBookmarkStore
 	ScheduledPost() ScheduledPostStore
@@ -1064,6 +1065,47 @@ type PostAcknowledgementStore interface {
 	BatchSave(acknowledgements []*model.PostAcknowledgement) ([]*model.PostAcknowledgement, error)
 	Delete(acknowledgement *model.PostAcknowledgement) error
 	BatchDelete(acknowledgements []*model.PostAcknowledgement) error
+}
+
+type PostReadReceiptStore interface {
+	// Core read receipt operations
+	SaveReadReceipt(rctx request.CTX, receipt *model.PostReadReceipt) (*model.PostReadReceipt, error)
+	SaveReadReceiptBatch(rctx request.CTX, batch *model.PostReadReceiptBatch) error
+	GetReadReceipt(postID, userID string) (*model.PostReadReceipt, error)
+	GetReadReceiptsForPost(postID string, includeDeleted bool) ([]*model.PostReadReceipt, error)
+	GetReadReceiptsForPosts(postIDs []string) (map[string][]*model.PostReadReceipt, error)
+	GetReadReceiptsForUser(userID string, channelID string, limit int) ([]*model.PostReadReceipt, error)
+	GetReadReceiptsForChannel(channelID string, since int64) ([]*model.PostReadReceipt, error)
+	DeleteReadReceipt(postID, userID string) error
+	DeleteReadReceiptsForUser(userID string) error
+	DeleteReadReceiptsForPost(postID string) error
+	DeleteReadReceiptsForChannel(channelID string) error
+	
+	// Read receipt information and summaries
+	GetReadReceiptInfo(postID string) (*model.PostReadReceiptInfo, error)
+	GetReadReceiptInfoBatch(postIDs []string) (map[string]*model.PostReadReceiptInfo, error)
+	GetReadReceiptSummary(postID string) (*model.PostReadReceiptSummary, error)
+	GetReadReceiptSummariesForChannel(channelID string, since int64) ([]*model.PostReadReceiptSummary, error)
+	UpdateReadReceiptSummary(summary *model.PostReadReceiptSummary) error
+	
+	// Batch and performance operations
+	CoalesceReadReceipts(channelID string, userID string, beforeTime int64) error
+	CleanupOldReadReceipts(daysOld int) (int64, error)
+	GetReadReceiptStats(channelID string) (map[string]interface{}, error)
+	
+	// Privacy and audit operations
+	SaveReadReceiptAuditLog(audit *model.ReadReceiptAuditLog) error
+	GetReadReceiptAuditLogs(userID string, since int64, limit int) ([]*model.ReadReceiptAuditLog, error)
+	AnonymizeReadReceiptsForUser(userID string) error
+	
+	// Ghost mode and privacy features
+	GetGhostReadReceipts(userID string, channelID string) ([]*model.PostReadReceipt, error)
+	SaveGhostReadReceipt(rctx request.CTX, receipt *model.PostReadReceipt) error
+	
+	// Utility methods
+	IsPostReadByUser(postID, userID string) (bool, error)
+	GetUnreadPostsCount(channelID, userID string, since int64) (int64, error)
+	GetLastReadTime(channelID, userID string) (int64, error)
 }
 
 type PostPersistentNotificationStore interface {

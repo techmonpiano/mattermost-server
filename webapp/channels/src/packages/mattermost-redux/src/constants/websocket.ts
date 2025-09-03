@@ -50,6 +50,8 @@ const WebsocketEvents = {
     THREAD_UPDATED: 'thread_updated',
     THREAD_FOLLOW_CHANGED: 'thread_follow_changed',
     THREAD_READ_CHANGED: 'thread_read_changed',
+    POST_READ_RECEIPT: 'post_read_receipt',
+    POST_READ_RECEIPTS_BATCH: 'post_read_receipts_batch',
     FIRST_ADMIN_VISIT_MARKETPLACE_STATUS_RECEIVED: 'first_admin_visit_marketplace_status_received',
     GROUP_MEMBER_DELETED: 'group_member_deleted',
 };

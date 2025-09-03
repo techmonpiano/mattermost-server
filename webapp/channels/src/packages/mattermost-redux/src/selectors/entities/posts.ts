@@ -607,6 +607,10 @@ export function isPostAcknowledgementsEnabled(state: GlobalState) {
     );
 }
 
+export function isPostReadReceiptsEnabled(state: GlobalState) {
+    return getConfig(state).PostReadReceipts === 'true';
+}
+
 export function getAllowPersistentNotifications(state: GlobalState) {
     return (
         isPostPriorityEnabled(state) &&
@@ -661,6 +665,142 @@ export function makeGetPostAcknowledgementsWithProfiles(): (state: GlobalState, 
             }).sort((a, b) => b.acknowledgedAt - a.acknowledgedAt);
         },
     );
+}
+
+// Read Receipt Selectors
+export function getPostReadReceipts(state: GlobalState, postId: Post['id']): Record<UserProfile['id'], number> {
+    return state.entities.posts.readReceipts[postId] || {};
+}
+
+export function isPostReadByUser(state: GlobalState, postId: Post['id'], userId: UserProfile['id']): boolean {
+    const readReceipts = getPostReadReceipts(state, postId);
+    return Boolean(readReceipts[userId]);
+}
+
+export function getPostReadReceiptCount(state: GlobalState, postId: Post['id']): number {
+    const readReceipts = getPostReadReceipts(state, postId);
+    return Object.keys(readReceipts).length;
+}
+
+export function makeGetPostReadReceiptsWithProfiles(): (state: GlobalState, postId: Post['id']) => Array<{user: UserProfile; readAt: number}> {
+    return createSelector(
+        'makeGetPostReadReceiptsWithProfiles',
+        getUsers,
+        getPostReadReceipts,
+        (users, readReceipts) => {
+            if (!readReceipts || Object.keys(readReceipts).length === 0) {
+                return [];
+            }
+            return Object.keys(readReceipts).flatMap((userId) => {
+                if (!users[userId]) {
+                    return [];
+                }
+                return {
+                    user: users[userId],
+                    readAt: readReceipts[userId],
+                };
+            }).sort((a, b) => b.readAt - a.readAt);
+        },
+    );
+}
+
+export function makeGetPostReadReceiptInfo(): (state: GlobalState, postId: Post['id'], channelId?: Channel['id']) => {
+    readReceipts: Array<{user: UserProfile; readAt: number}>;
+    readCount: number;
+    totalUsers: number;
+    allRead: boolean;
+    partiallyRead: boolean;
+} {
+    return createSelector(
+        'makeGetPostReadReceiptInfo',
+        getUsers,
+        getPostReadReceipts,
+        (state: GlobalState, postId: Post['id'], channelId?: Channel['id']) => {
+            if (channelId) {
+                return getChannelMembers(state, channelId);
+            }
+            return {};
+        },
+        (users, readReceipts, channelMembers) => {
+            const readReceiptsWithProfiles = Object.keys(readReceipts || {}).flatMap((userId) => {
+                if (!users[userId]) {
+                    return [];
+                }
+                return {
+                    user: users[userId],
+                    readAt: readReceipts[userId],
+                };
+            }).sort((a, b) => b.readAt - a.readAt);
+
+            const readCount = readReceiptsWithProfiles.length;
+            const totalUsers = Object.keys(channelMembers || {}).length || readCount;
+            const allRead = readCount >= totalUsers && totalUsers > 0;
+            const partiallyRead = readCount > 0 && readCount < totalUsers;
+
+            return {
+                readReceipts: readReceiptsWithProfiles,
+                readCount,
+                totalUsers,
+                allRead,
+                partiallyRead,
+            };
+        },
+    );
+}
+
+export function getPostReadReceiptSummary(state: GlobalState, postId: Post['id']): {
+    readCount: number;
+    hasReadReceipts: boolean;
+} {
+    const readReceipts = getPostReadReceipts(state, postId);
+    const readCount = Object.keys(readReceipts).length;
+    
+    return {
+        readCount,
+        hasReadReceipts: readCount > 0,
+    };
+}
+
+export function getReadReceiptsForChannel(state: GlobalState, channelId: Channel['id']): Record<Post['id'], Record<UserProfile['id'], number>> {
+    const allReadReceipts = state.entities.posts.readReceipts || {};
+    const channelPosts = getPostsInChannel(state, channelId) || [];
+    
+    const channelReadReceipts: Record<Post['id'], Record<UserProfile['id'], number>> = {};
+    
+    channelPosts.forEach((postId) => {
+        if (allReadReceipts[postId]) {
+            channelReadReceipts[postId] = allReadReceipts[postId];
+        }
+    });
+    
+    return channelReadReceipts;
+}
+
+export function getUserReadReceiptHistory(state: GlobalState, userId: UserProfile['id'], channelId?: Channel['id']): Array<{postId: Post['id']; readAt: number}> {
+    const allReadReceipts = state.entities.posts.readReceipts || {};
+    const userReadReceipts: Array<{postId: Post['id']; readAt: number}> = [];
+    
+    Object.keys(allReadReceipts).forEach((postId) => {
+        if (allReadReceipts[postId][userId]) {
+            // If channelId is specified, filter by channel
+            if (channelId) {
+                const post = getPost(state, postId);
+                if (post && post.channel_id === channelId) {
+                    userReadReceipts.push({
+                        postId,
+                        readAt: allReadReceipts[postId][userId],
+                    });
+                }
+            } else {
+                userReadReceipts.push({
+                    postId,
+                    readAt: allReadReceipts[postId][userId],
+                });
+            }
+        }
+    });
+    
+    return userReadReceipts.sort((a, b) => b.readAt - a.readAt);
 }
 
 export function getTeamIdFromPost(state: GlobalState, post: Post): Team['id'] | undefined {

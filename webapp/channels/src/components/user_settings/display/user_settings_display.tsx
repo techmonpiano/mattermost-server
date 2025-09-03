@@ -29,6 +29,7 @@ import {a11yFocus} from 'utils/utils';
 import ManageLanguages from './manage_languages';
 import ManageTimezones from './manage_timezones';
 import RenderEmoticonsAsEmoji from './render_emoticons_as_emoji';
+import PostReadReceipts from './post_read_receipts';
 
 import SettingDesktopHeader from '../headers/setting_desktop_header';
 import SettingMobileHeader from '../headers/setting_mobile_header';
@@ -49,6 +50,7 @@ function getDisplayStateFromProps(props: Props) {
         lastActiveDisplay: props.lastActiveDisplay.toString(),
         oneClickReactionsOnPosts: props.oneClickReactionsOnPosts,
         clickToReply: props.clickToReply,
+        postReadReceiptsEnabled: props.postReadReceiptsEnabled,
     };
 }
 
@@ -122,6 +124,7 @@ type Props = OwnProps & {
     lastActiveDisplay: boolean;
     lastActiveTimeEnabled: boolean;
     renderEmoticonsAsEmoji: string;
+    postReadReceiptsEnabled: string;
     actions: {
         savePreferences: (userId: string, preferences: PreferenceType[]) => void;
         autoUpdateTimezone: (deviceTimezone: string) => void;
@@ -145,6 +148,7 @@ type State = {
     lastActiveDisplay: string;
     oneClickReactionsOnPosts: string;
     clickToReply: string;
+    postReadReceiptsEnabled: string;
     handleSubmit?: () => void;
     serverError?: string;
 }
@@ -1189,6 +1193,46 @@ export default class UserSettingsDisplay extends React.PureComponent<Props, Stat
             </div>
         );
 
+        const postReadReceiptsSection = (
+            <div>
+                <SettingItem
+                    active={this.props.activeSection === 'postReadReceipts'}
+                    areAllSectionsInactive={this.props.activeSection === ''}
+                    title={
+                        <FormattedMessage
+                            id='user.settings.display.postReadReceiptsTitle'
+                            defaultMessage='Show read receipts'
+                        />
+                    }
+                    describe={
+                        this.props.postReadReceiptsEnabled === 'true' ? (
+                            <FormattedMessage
+                                id='user.settings.advance.on'
+                                defaultMessage='On'
+                            />
+                        ) : (
+                            <FormattedMessage
+                                id='user.settings.advance.off'
+                                defaultMessage='Off'
+                            />
+                        )
+                    }
+                    section='postReadReceipts'
+                    updateSection={this.updateSection}
+                    max={(
+                        <PostReadReceipts
+                            postReadReceiptsEnabled={this.props.postReadReceiptsEnabled}
+                            user={this.props.user}
+                            updateSection={this.updateSection}
+                            adminMode={this.props.adminMode}
+                            userPreferences={this.props.userPreferences}
+                        />
+                    )}
+                />
+                <div className='divider-dark'/>
+            </div>
+        );
+
         return (
             <div
                 id='displaySettings'
@@ -1230,6 +1274,7 @@ export default class UserSettingsDisplay extends React.PureComponent<Props, Stat
                     {channelDisplayModeSection}
                     {oneClickReactionsOnPostsSection}
                     {renderEmoticonsAsEmojiSection}
+                    {postReadReceiptsSection}
                     {languagesSection}
                 </div>
             </div>

@@ -12,7 +12,7 @@ import type {Post} from '@mattermost/types/posts';
 import {General} from 'mattermost-redux/constants';
 import {getDirectTeammate} from 'mattermost-redux/selectors/entities/channels';
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
-import {getPost, makeGetCommentCountForPost, makeIsPostCommentMention, isPostAcknowledgementsEnabled, isPostPriorityEnabled, isPostFlagged} from 'mattermost-redux/selectors/entities/posts';
+import {getPost, makeGetCommentCountForPost, makeIsPostCommentMention, isPostAcknowledgementsEnabled, isPostReadReceiptsEnabled, isPostPriorityEnabled, isPostFlagged} from 'mattermost-redux/selectors/entities/posts';
 import type {UserActivityPost} from 'mattermost-redux/selectors/entities/posts';
 import {
     get,
@@ -211,6 +211,7 @@ function makeMapStateToProps() {
             parentPost,
             parentPostUser,
             isPostAcknowledgementsEnabled: isPostAcknowledgementsEnabled(state),
+            isPostReadReceiptsEnabled: isPostReadReceiptsEnabled(state),
             isPostPriorityEnabled: isPostPriorityEnabled(state),
             isCardOpen: selectedCard && selectedCard.id === post.id,
             shouldShowDotMenu: shouldShowDotMenu(state, post, channel),

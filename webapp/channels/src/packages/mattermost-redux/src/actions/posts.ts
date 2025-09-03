@@ -1353,6 +1353,231 @@ export function unacknowledgePost(postId: string): ActionFuncAsync {
     };
 }
 
+// Read Receipt Actions
+export function markPostAsRead(postId: string, readAt?: number, deviceId?: string): ActionFuncAsync {
+    return async (dispatch, getState) => {
+        const userId = getCurrentUserId(getState());
+
+        dispatch({
+            type: PostTypes.MARK_POST_AS_READ_REQUEST,
+            data: {postId, userId},
+        });
+
+        let data;
+        try {
+            data = await Client4.markPostAsRead(postId, userId, readAt, deviceId);
+        } catch (error) {
+            forceLogoutIfNecessary(error, dispatch, getState);
+            dispatch(logError(error));
+            dispatch({
+                type: PostTypes.MARK_POST_AS_READ_FAILURE,
+                error,
+            });
+            return {error};
+        }
+
+        dispatch({
+            type: PostTypes.MARK_POST_AS_READ_SUCCESS,
+            data,
+        });
+
+        dispatch({
+            type: PostTypes.RECEIVED_READ_RECEIPT,
+            data,
+        });
+
+        return {data};
+    };
+}
+
+export function unmarkPostAsRead(postId: string): ActionFuncAsync {
+    return async (dispatch, getState) => {
+        const userId = getCurrentUserId(getState());
+
+        dispatch({
+            type: PostTypes.UNMARK_POST_AS_READ_REQUEST,
+            data: {postId, userId},
+        });
+
+        try {
+            await Client4.unmarkPostAsRead(postId, userId);
+        } catch (error) {
+            forceLogoutIfNecessary(error, dispatch, getState);
+            dispatch(logError(error));
+            dispatch({
+                type: PostTypes.UNMARK_POST_AS_READ_FAILURE,
+                error,
+            });
+            return {error};
+        }
+
+        const data = {
+            post_id: postId,
+            user_id: userId,
+            read_at: 0,
+        };
+
+        dispatch({
+            type: PostTypes.UNMARK_POST_AS_READ_SUCCESS,
+            data,
+        });
+
+        dispatch({
+            type: PostTypes.READ_RECEIPT_DELETED,
+            data,
+        });
+
+        return {data};
+    };
+}
+
+export function markPostsAsReadBatch(postIds: string[], channelId: string, readAt?: number, deviceId?: string): ActionFuncAsync {
+    return async (dispatch, getState) => {
+        const userId = getCurrentUserId(getState());
+
+        dispatch({
+            type: PostTypes.MARK_POSTS_AS_READ_BATCH_REQUEST,
+            data: {postIds, userId, channelId},
+        });
+
+        let data;
+        try {
+            data = await Client4.markPostsAsReadBatch(postIds, channelId, readAt, deviceId);
+        } catch (error) {
+            forceLogoutIfNecessary(error, dispatch, getState);
+            dispatch(logError(error));
+            dispatch({
+                type: PostTypes.MARK_POSTS_AS_READ_BATCH_FAILURE,
+                error,
+            });
+            return {error};
+        }
+
+        dispatch({
+            type: PostTypes.MARK_POSTS_AS_READ_BATCH_SUCCESS,
+            data,
+        });
+
+        dispatch({
+            type: PostTypes.RECEIVED_READ_RECEIPTS_BATCH,
+            data: data.receipts,
+        });
+
+        return {data};
+    };
+}
+
+export function getReadReceiptsForPost(postId: string, includeDeleted: boolean = false): ActionFuncAsync {
+    return async (dispatch, getState) => {
+        dispatch({
+            type: PostTypes.GET_READ_RECEIPTS_FOR_POST_REQUEST,
+            data: {postId},
+        });
+
+        let data;
+        try {
+            data = await Client4.getPostReadReceipts(postId, includeDeleted);
+        } catch (error) {
+            forceLogoutIfNecessary(error, dispatch, getState);
+            dispatch(logError(error));
+            dispatch({
+                type: PostTypes.GET_READ_RECEIPTS_FOR_POST_FAILURE,
+                error,
+            });
+            return {error};
+        }
+
+        dispatch({
+            type: PostTypes.GET_READ_RECEIPTS_FOR_POST_SUCCESS,
+            data,
+        });
+
+        return {data};
+    };
+}
+
+export function getChannelReadReceiptSummary(channelId: string, since?: number): ActionFuncAsync {
+    return async (dispatch, getState) => {
+        const userId = getCurrentUserId(getState());
+
+        dispatch({
+            type: PostTypes.GET_CHANNEL_READ_RECEIPT_SUMMARY_REQUEST,
+            data: {channelId, userId},
+        });
+
+        let data;
+        try {
+            data = await Client4.getChannelReadReceiptSummary(channelId, userId, since);
+        } catch (error) {
+            forceLogoutIfNecessary(error, dispatch, getState);
+            dispatch(logError(error));
+            dispatch({
+                type: PostTypes.GET_CHANNEL_READ_RECEIPT_SUMMARY_FAILURE,
+                error,
+            });
+            return {error};
+        }
+
+        dispatch({
+            type: PostTypes.GET_CHANNEL_READ_RECEIPT_SUMMARY_SUCCESS,
+            data,
+        });
+
+        return {data};
+    };
+}
+
+export function getUserReadReceiptHistory(userId: string, channelId?: string, since?: number, limit?: number): ActionFuncAsync {
+    return async (dispatch, getState) => {
+        dispatch({
+            type: PostTypes.GET_USER_READ_RECEIPT_HISTORY_REQUEST,
+            data: {userId, channelId},
+        });
+
+        let data;
+        try {
+            data = await Client4.getUserReadReceiptHistory(userId, channelId, since, limit);
+        } catch (error) {
+            forceLogoutIfNecessary(error, dispatch, getState);
+            dispatch(logError(error));
+            dispatch({
+                type: PostTypes.GET_USER_READ_RECEIPT_HISTORY_FAILURE,
+                error,
+            });
+            return {error};
+        }
+
+        dispatch({
+            type: PostTypes.GET_USER_READ_RECEIPT_HISTORY_SUCCESS,
+            data,
+        });
+
+        return {data};
+    };
+}
+
+// Websocket event handlers
+export function receivedReadReceipt(readReceipt: any) {
+    return {
+        type: PostTypes.RECEIVED_READ_RECEIPT,
+        data: readReceipt,
+    };
+}
+
+export function receivedReadReceiptsBatch(readReceipts: any[]) {
+    return {
+        type: PostTypes.RECEIVED_READ_RECEIPTS_BATCH,
+        data: readReceipts,
+    };
+}
+
+export function receivedReadReceiptSummary(summary: any) {
+    return {
+        type: PostTypes.RECEIVED_READ_RECEIPT_SUMMARY,
+        data: summary,
+    };
+}
+
 export function restorePostVersion(postId: string, restoreVersionId: string, connectionId: string): ActionFuncAsync {
     return async (dispatch, getState) => {
         try {

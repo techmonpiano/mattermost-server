@@ -116,11 +116,12 @@ type Post struct {
 	RemoteId      *string         `json:"remote_id,omitempty"`
 
 	// Transient data populated before sending a post to the client
-	ReplyCount   int64         `json:"reply_count"`
-	LastReplyAt  int64         `json:"last_reply_at"`
-	Participants []*User       `json:"participants"`
-	IsFollowing  *bool         `json:"is_following,omitempty"` // for root posts in collapsed thread mode indicates if the current user is following this thread
-	Metadata     *PostMetadata `json:"metadata,omitempty"`
+	ReplyCount      int64                    `json:"reply_count"`
+	LastReplyAt     int64                    `json:"last_reply_at"`
+	Participants    []*User                  `json:"participants"`
+	IsFollowing     *bool                    `json:"is_following,omitempty"` // for root posts in collapsed thread mode indicates if the current user is following this thread
+	Metadata        *PostMetadata            `json:"metadata,omitempty"`
+	ReadReceiptInfo *PostReadReceiptInfo     `json:"read_receipt_info,omitempty"` // read receipt information for DMs and GMs only
 }
 
 func (o *Post) Auditable() map[string]any {

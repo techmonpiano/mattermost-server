@@ -94,6 +94,11 @@ const (
 	CollapsedThreadsDefaultOff = "default_off"
 	CollapsedThreadsAlwaysOn   = "always_on"
 
+	ReadReceiptsDisabled          = "disabled"
+	ReadReceiptsEnabledDefaultOff = "enabled_default_off"
+	ReadReceiptsEnabledDefaultOn  = "enabled_default_on"
+	ReadReceiptsAlwaysOn          = "always_on"
+
 	EmailBatchingBufferSize = 256
 	EmailBatchingInterval   = 30
 
@@ -449,6 +454,18 @@ type ServiceSettings struct {
 	EnableWebHubChannelIteration                      *bool   `access:"write_restrictable,cloud_restrictable"` // telemetry: none
 	FrameAncestors                                    *string `access:"write_restrictable,cloud_restrictable"` // telemetry: none
 	DeleteAccountLink                                 *string `access:"site_users_and_teams,write_restrictable,cloud_restrictable"`
+	
+	// Read Receipts Settings
+	EnableReadReceipts                                *bool   `access:"experimental_features"`
+	ReadReceiptsDefaultSetting                        *string `access:"experimental_features"`
+	ReadReceiptsMaxGroupSize                          *int    `access:"experimental_features"`
+	ReadReceiptsRetentionDays                         *int    `access:"experimental_features"`
+	ReadReceiptsEnableGhostMode                       *bool   `access:"experimental_features"`
+	ReadReceiptsRequireAuditLog                       *bool   `access:"experimental_features"`
+	ReadReceiptsBusinessHoursOnly                     *bool   `access:"experimental_features"`
+	ReadReceiptsEnableDeviceTracking                  *bool   `access:"experimental_features"`
+	ReadReceiptsThrottleIntervalMs                    *int    `access:"experimental_features"`
+	ReadReceiptsBatchWindowMs                         *int    `access:"experimental_features"`
 }
 
 var MattermostGiphySdkKey string
@@ -991,6 +1008,47 @@ func (s *ServiceSettings) SetDefaults(isUpdate bool) {
 
 	if s.DeleteAccountLink == nil {
 		s.DeleteAccountLink = NewPointer("")
+	}
+	
+	// Read Receipts defaults
+	if s.EnableReadReceipts == nil {
+		s.EnableReadReceipts = NewPointer(false)
+	}
+	
+	if s.ReadReceiptsDefaultSetting == nil {
+		s.ReadReceiptsDefaultSetting = NewPointer("disabled")
+	}
+	
+	if s.ReadReceiptsMaxGroupSize == nil {
+		s.ReadReceiptsMaxGroupSize = NewPointer(20)
+	}
+	
+	if s.ReadReceiptsRetentionDays == nil {
+		s.ReadReceiptsRetentionDays = NewPointer(30)
+	}
+	
+	if s.ReadReceiptsEnableGhostMode == nil {
+		s.ReadReceiptsEnableGhostMode = NewPointer(false)
+	}
+	
+	if s.ReadReceiptsRequireAuditLog == nil {
+		s.ReadReceiptsRequireAuditLog = NewPointer(true)
+	}
+	
+	if s.ReadReceiptsBusinessHoursOnly == nil {
+		s.ReadReceiptsBusinessHoursOnly = NewPointer(false)
+	}
+	
+	if s.ReadReceiptsEnableDeviceTracking == nil {
+		s.ReadReceiptsEnableDeviceTracking = NewPointer(false)
+	}
+	
+	if s.ReadReceiptsThrottleIntervalMs == nil {
+		s.ReadReceiptsThrottleIntervalMs = NewPointer(500)
+	}
+	
+	if s.ReadReceiptsBatchWindowMs == nil {
+		s.ReadReceiptsBatchWindowMs = NewPointer(100)
 	}
 }
 

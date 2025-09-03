@@ -1,0 +1,76 @@
+@use 'utils/mixins';
+@use 'utils/variables';
+
+.ReadReceiptButton {
+    @include mixins.button-xsmall;
+
+    position: relative;
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    border: 0;
+    border-radius: 4px;
+    margin: 4px 0;
+    background: rgba(var(--button-bg-rgb), 0.08);
+    color: var(--button-bg);
+    font-weight: 600;
+    transition: all 0.15s ease-out;
+
+    > svg {
+        margin-right: 3px;
+        fill: var(--button-bg);
+    }
+
+    &--default {
+        padding-right: 9px;
+    }
+
+    &--disabled,
+    &:disabled {
+        background: rgba(var(--button-bg-rgb), 0.08);
+        cursor: default;
+        opacity: 0.5;
+    }
+
+    &:hover:enabled {
+        background: rgba(var(--button-bg-rgb), 0.12);
+    }
+
+    &:active:enabled {
+        background: rgba(var(--button-bg-rgb), 0.16);
+    }
+
+    &--read {
+        background: rgba(var(--button-bg-rgb), 0.8);
+        color: #fff;
+
+        > svg {
+            margin-right: 3px;
+            fill: #fff;
+        }
+
+        &.ReadReceiptButton--disabled,
+        &.ReadReceiptButton--disabled:hover,
+        &:disabled {
+            background: rgba(var(--button-bg-rgb), 0.8);
+            color: #fff;
+
+            > svg {
+                margin-right: 3px;
+                fill: #fff;
+            }
+        }
+
+        &:active:enabled:not(.ReadReceiptButton--disabled),
+        &:hover:enabled:not(.ReadReceiptButton--disabled) {
+            background: rgb(var(--button-bg-rgb));
+        }
+    }
+}
+
+.ReadReceiptButton__divider {
+    width: 1px;
+    height: 24px;
+    margin: 0 4px;
+    background: rgba(var(--center-channel-color-rgb), 0.16);
+}

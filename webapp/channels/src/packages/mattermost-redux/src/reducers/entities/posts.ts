@@ -1285,6 +1285,97 @@ export function acknowledgements(state: RelationOneToOne<Post, Record<UserProfil
     }
 }
 
+export function readReceipts(state: RelationOneToOne<Post, Record<UserProfile['id'], number>> = {}, action: MMReduxAction) {
+    switch (action.type) {
+    case PostTypes.MARK_POST_AS_READ_SUCCESS:
+    case PostTypes.RECEIVED_READ_RECEIPT: {
+        const receipt = action.data;
+        const oldState = state[receipt.post_id] || {};
+
+        return {
+            ...state,
+            [receipt.post_id]: {
+                ...oldState,
+                [receipt.user_id]: receipt.read_at,
+            },
+        };
+    }
+    case PostTypes.RECEIVED_READ_RECEIPTS_BATCH: {
+        const receipts = action.data;
+        const nextState = {...state};
+
+        receipts.forEach((receipt: any) => {
+            const oldState = nextState[receipt.post_id] || {};
+            nextState[receipt.post_id] = {
+                ...oldState,
+                [receipt.user_id]: receipt.read_at,
+            };
+        });
+
+        return nextState;
+    }
+    case PostTypes.UNMARK_POST_AS_READ_SUCCESS:
+    case PostTypes.READ_RECEIPT_DELETED: {
+        const data = action.data;
+        
+        if (!state[data.post_id] || !state[data.post_id][data.user_id]) {
+            return state;
+        }
+
+        // avoid a race condition
+        const readAt = state[data.post_id][data.user_id];
+        if (readAt > data.read_at && data.read_at !== 0) {
+            return state;
+        }
+
+        const nextState = {...(state[data.post_id])};
+        Reflect.deleteProperty(nextState, data.user_id);
+
+        return {
+            ...state,
+            [data.post_id]: {
+                ...nextState,
+            },
+        };
+    }
+    case PostTypes.RECEIVED_POST: {
+        const post = action.data;
+        
+        return storeReadReceiptsForPost(state, post);
+    }
+    case PostTypes.RECEIVED_POSTS:
+    case PostTypes.RECEIVED_POSTS_AFTER:
+    case PostTypes.RECEIVED_POSTS_BEFORE:
+    case PostTypes.RECEIVED_POSTS_SINCE:
+    case PostTypes.RECEIVED_POSTS_IN_CHANNEL: {
+        const {posts} = action.data;
+        let nextState = state;
+
+        for (const post of Object.values(posts)) {
+            nextState = storeReadReceiptsForPost(nextState, post as Post);
+        }
+
+        return nextState;
+    }
+    case PostTypes.POST_DELETED:
+    case PostTypes.POST_REMOVED: {
+        const post = action.data;
+
+        if (state[post.id]) {
+            const nextState = {...state};
+            Reflect.deleteProperty(nextState, post.id);
+            return nextState;
+        }
+
+        return state;
+    }
+    case UserTypes.LOGOUT_SUCCESS:
+        return {};
+    default:
+        return state;
+    }
+}
+
 function storeReactionsForPost(state: RelationOneToOne<Post, Record<string, Reaction>>, post: Post) {
     if (!post.metadata || post.delete_at > 0) {
         return state;
@@ -1323,6 +1414,29 @@ function storeAcknowledgementsForPost(state: any, post: Post) {
     return {
         ...state,
         [post.id]: acknowledgementsForPost,
+    };
+}
+
+function storeReadReceiptsForPost(state: any, post: Post) {
+    if (
+        !post.metadata ||
+        !post.metadata.read_receipts ||
+        !post.metadata.read_receipts.length ||
+        post.delete_at > 0
+    ) {
+        return state;
+    }
+
+    const readReceiptsForPost: Record<UserProfile['id'], number> = {};
+    if (post?.metadata?.read_receipts && post.metadata.read_receipts.length > 0) {
+        for (const receipt of post.metadata.read_receipts) {
+            readReceiptsForPost[receipt.user_id] = receipt.read_at;
+        }
+    }
+
+    return {
+        ...state,
+        [post.id]: readReceiptsForPost,
     };
 }
 
@@ -1568,6 +1682,7 @@ export default function reducer(state: Partial<PostsState> = {}, action: MMRedux
         // History of posts and comments
         messagesHistory: messagesHistory(state.messagesHistory, action),
         acknowledgements: acknowledgements(state.acknowledgements, action),
+        readReceipts: readReceipts(state.readReceipts, action),
 
         // For cloud instances with a message limit,
         // whether this particular view has messages that are hidden
@@ -1582,6 +1697,7 @@ export default function reducer(state: Partial<PostsState> = {}, action: MMRedux
         state.currentFocusedPostId === nextState.currentFocusedPostId &&
         state.reactions === nextState.reactions &&
         state.acknowledgements === nextState.acknowledgements &&
+        state.readReceipts === nextState.readReceipts &&
         state.openGraph === nextState.openGraph &&
         state.messagesHistory === nextState.messagesHistory &&
         state.limitedViews === nextState.limitedViews) {

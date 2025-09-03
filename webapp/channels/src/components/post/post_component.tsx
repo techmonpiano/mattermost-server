@@ -25,6 +25,7 @@ import MessageWithAdditionalContent from 'components/message_with_additional_con
 import PriorityLabel from 'components/post_priority/post_priority_label';
 import PostProfilePicture from 'components/post_profile_picture';
 import PostAcknowledgements from 'components/post_view/acknowledgements';
+import PostReadReceipts from 'components/post_view/read_receipts';
 import CommentedOn from 'components/post_view/commented_on/commented_on';
 import FailedPostOptions from 'components/post_view/failed_post_options';
 import PostAriaLabelDiv from 'components/post_view/post_aria_label_div';
@@ -114,6 +115,7 @@ export type Props = {
     parentPostUser?: UserProfile | null;
     shortcutReactToLastPostEmittedFrom?: string;
     isPostAcknowledgementsEnabled: boolean;
+    isPostReadReceiptsEnabled: boolean;
     isPostPriorityEnabled: boolean;
     isCardOpen?: boolean;
     canDelete?: boolean;
@@ -653,6 +655,13 @@ function PostComponent(props: Props) {
                             <div className='post__body-reactions-acks'>
                                 {props.isPostAcknowledgementsEnabled && post.metadata?.priority?.requested_ack && (
                                     <PostAcknowledgements
+                                        authorId={post.user_id}
+                                        isDeleted={post.state === Posts.POST_DELETED}
+                                        postId={post.id}
+                                    />
+                                )}
+                                {props.isPostReadReceiptsEnabled && (props.channelType === Constants.DM_CHANNEL || props.channelType === Constants.GM_CHANNEL) && (
+                                    <PostReadReceipts
                                         authorId={post.user_id}
                                         isDeleted={post.state === Posts.POST_DELETED}
                                         postId={post.id}
