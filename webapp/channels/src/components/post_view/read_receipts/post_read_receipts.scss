@@ -1,76 +1,126 @@
-@use 'utils/mixins';
-@use 'utils/variables';
+// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
 
-.ReadReceiptButton {
-    @include mixins.button-xsmall;
+.ReadReceiptIndicator {
+    &__container {
+        display: inline-flex;
+        align-items: center;
+        cursor: pointer;
+        padding: 2px 4px;
+        border-radius: 4px;
+        transition: background-color 0.15s ease;
 
-    position: relative;
-    display: flex;
-    min-width: 0;
-    align-items: center;
-    border: 0;
-    border-radius: 4px;
-    margin: 4px 0;
-    background: rgba(var(--button-bg-rgb), 0.08);
-    color: var(--button-bg);
-    font-weight: 600;
-    transition: all 0.15s ease-out;
-
-    > svg {
-        margin-right: 3px;
-        fill: var(--button-bg);
-    }
-
-    &--default {
-        padding-right: 9px;
-    }
-
-    &--disabled,
-    &:disabled {
-        background: rgba(var(--button-bg-rgb), 0.08);
-        cursor: default;
-        opacity: 0.5;
-    }
-
-    &:hover:enabled {
-        background: rgba(var(--button-bg-rgb), 0.12);
-    }
-
-    &:active:enabled {
-        background: rgba(var(--button-bg-rgb), 0.16);
-    }
-
-    &--read {
-        background: rgba(var(--button-bg-rgb), 0.8);
-        color: #fff;
-
-        > svg {
-            margin-right: 3px;
-            fill: #fff;
+        &:hover {
+            background-color: rgba(var(--center-channel-color-rgb), 0.08);
         }
 
-        &.ReadReceiptButton--disabled,
-        &.ReadReceiptButton--disabled:hover,
-        &:disabled {
-            background: rgba(var(--button-bg-rgb), 0.8);
-            color: #fff;
-
-            > svg {
-                margin-right: 3px;
-                fill: #fff;
-            }
+        &--with-divider {
+            margin-left: 8px;
         }
+    }
 
-        &:active:enabled:not(.ReadReceiptButton--disabled),
-        &:hover:enabled:not(.ReadReceiptButton--disabled) {
-            background: rgb(var(--button-bg-rgb));
+    &__divider {
+        width: 1px;
+        height: 16px;
+        background-color: rgba(var(--center-channel-color-rgb), 0.16);
+        margin-left: 8px;
+        margin-right: 8px;
+    }
+
+    &--single {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+    }
+
+    &--multiple {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    &__avatar {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+
+    &__check {
+        color: var(--button-bg);
+        margin-left: 2px;
+        
+        .ReadReceiptIndicator--single & {
+            position: absolute;
+            bottom: -2px;
+            right: -2px;
+            background-color: var(--center-channel-bg);
+            border-radius: 50%;
+            padding: 1px;
         }
+    }
+
+    &__count {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--button-bg);
+        line-height: 1;
     }
 }
 
-.ReadReceiptButton__divider {
-    width: 1px;
-    height: 24px;
-    margin: 0 4px;
-    background: rgba(var(--center-channel-color-rgb), 0.16);
+.ReadReceiptPopover {
+    background-color: var(--center-channel-bg);
+    border: 1px solid rgba(var(--center-channel-color-rgb), 0.16);
+    border-radius: 8px;
+    box-shadow: var(--elevation-8);
+    padding: 0;
+    max-height: 300px;
+    overflow-y: auto;
+
+    &__header {
+        padding: 12px 16px 8px;
+        font-size: 12px;
+        font-weight: 600;
+        color: rgba(var(--center-channel-color-rgb), 0.75);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 1px solid rgba(var(--center-channel-color-rgb), 0.08);
+        margin-bottom: 4px;
+    }
+
+    &__body {
+        padding: 8px 0 12px;
+    }
+
+    &__user {
+        display: flex;
+        align-items: center;
+        padding: 6px 16px;
+        gap: 12px;
+        transition: background-color 0.15s ease;
+
+        &:hover {
+            background-color: rgba(var(--center-channel-color-rgb), 0.04);
+        }
+    }
+
+    &__user-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    &__user-name {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--center-channel-color);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    &__read-time {
+        font-size: 12px;
+        color: rgba(var(--center-channel-color-rgb), 0.64);
+        margin-top: 2px;
+    }
 }

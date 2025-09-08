@@ -23,23 +23,12 @@ export type OwnProps = {
 }
 
 type Props = OwnProps & {
-    postReadReceiptsEnabled: boolean;
+    postReadReceiptsEnabled: string;
     actions: Actions;
 }
 
 const PostReadReceipts: React.FC<Props> = ({user, postReadReceiptsEnabled, updateSection, actions}) => {
-
-console.log("[DEBUG] PostReadReceipts component props:", {
-    postReadReceiptsEnabled,
-    typeOfProp: typeof postReadReceiptsEnabled,
-    stringValue: String(postReadReceiptsEnabled),
-    equalToTrue: postReadReceiptsEnabled === true,
-    equalToStringTrue: postReadReceiptsEnabled,
-    rawValue: JSON.stringify(postReadReceiptsEnabled)
-});
     const [value, setValue] = useState<string>(postReadReceiptsEnabled);
-
-console.log("DEBUG PostReadReceipts - received prop:", postReadReceiptsEnabled, "type:", typeof postReadReceiptsEnabled);
     const [isSaving, setIsSaving] = useState<boolean>(false);
 
     const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {

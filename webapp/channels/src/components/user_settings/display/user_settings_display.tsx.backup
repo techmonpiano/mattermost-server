@@ -124,7 +124,7 @@ type Props = OwnProps & {
     lastActiveDisplay: boolean;
     lastActiveTimeEnabled: boolean;
     renderEmoticonsAsEmoji: string;
-    postReadReceiptsEnabled: boolean;
+    postReadReceiptsEnabled: string;
     actions: {
         savePreferences: (userId: string, preferences: PreferenceType[]) => void;
         autoUpdateTimezone: (deviceTimezone: string) => void;
@@ -148,7 +148,7 @@ type State = {
     lastActiveDisplay: string;
     oneClickReactionsOnPosts: string;
     clickToReply: string;
-    postReadReceiptsEnabled: boolean;
+    postReadReceiptsEnabled: string;
     handleSubmit?: () => void;
     serverError?: string;
 }
@@ -1205,9 +1205,7 @@ export default class UserSettingsDisplay extends React.PureComponent<Props, Stat
                         />
                     }
                     describe={
-                        // DEBUG: Log the actual value and type of postReadReceiptsEnabled
-                        console.log("SETTINGS DEBUG - postReadReceiptsEnabled value:", this.props.postReadReceiptsEnabled, "type:", typeof this.props.postReadReceiptsEnabled, "strict equality to true:", this.props.postReadReceiptsEnabled === "true"),
-                        this.props.postReadReceiptsEnabled ? (
+                        this.props.postReadReceiptsEnabled === 'true' ? (
                             <FormattedMessage
                                 id='user.settings.advance.on'
                                 defaultMessage='On'

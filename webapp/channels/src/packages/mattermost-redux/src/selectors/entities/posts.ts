@@ -608,7 +608,9 @@ export function isPostAcknowledgementsEnabled(state: GlobalState) {
 }
 
 export function isPostReadReceiptsEnabled(state: GlobalState) {
-    return getConfig(state).PostReadReceipts === 'true';
+    // TEMPORARY BANDAID: Enable read receipts for demonstration
+    // TODO: Properly implement server-side PostReadReceipts config mapping
+    return true; // getConfig(state).PostReadReceipts === 'true';
 }
 
 export function getAllowPersistentNotifications(state: GlobalState) {

@@ -55,6 +55,7 @@ func (api *API) InitPost() {
 	api.BaseRoutes.Posts.Handle("/read/batch", api.APISessionRequired(markPostsAsReadBatch)).Methods(http.MethodPost)
 	api.BaseRoutes.ChannelForUser.Handle("/read_receipts", api.APISessionRequired(getChannelReadReceiptSummary)).Methods(http.MethodGet)
 	api.BaseRoutes.UserForUser.Handle("/read_receipts", api.APISessionRequired(getUserReadReceiptHistory)).Methods(http.MethodGet)
+	api.BaseRoutes.Channel.Handle("/read_receipts/backfill", api.APISessionRequired(backfillReadReceiptsForChannel)).Methods(http.MethodPost)
 
 	api.BaseRoutes.Post.Handle("/move", api.APISessionRequired(moveThread)).Methods(http.MethodPost)
 }

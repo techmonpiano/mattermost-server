@@ -1,131 +1,68 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, {useMemo} from 'react';
-import {FormattedMessage} from 'react-intl';
-import {useSelector} from 'react-redux';
-import styled from 'styled-components';
+import React from 'react';
+import {FormattedMessage, FormattedTime} from 'react-intl';
 
 import type {UserProfile} from '@mattermost/types/users';
 
-import {Client4} from 'mattermost-redux/client';
-import {makeGetDisplayName} from 'mattermost-redux/selectors/entities/users';
-
-import Nbsp from 'components/html_entities/nbsp';
-import Timestamp from 'components/timestamp';
 import Avatar from 'components/widgets/users/avatar';
+import {getFullName} from 'mattermost-redux/utils/user_utils';
 
-import type {GlobalState} from 'types/store';
+import type {ReadReceiptData} from './post_read_receipts';
 
 type Props = {
     currentUserId: UserProfile['id'];
-    list: Array<{user: UserProfile; readAt: number}>;
-};
-
-const Item = styled.div`
-    display: flex;
-    gap: 12px;
-    padding: 10px 20px;
-`;
-
-const Info = styled.div`
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-    overflow-x: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-`;
-
-const Title = styled.div`
-    color: rgba(var(--center-channel-color-rgb), 0.75);
-    font-size: 12px;
-    font-weight: 600;
-    line-height: 16px;
-    padding: 8px 20px;
-`;
-
-const Span = styled.span`
-    color: rgba(var(--center-channel-color-rgb), 0.75);
-    font-size: 12px;
-    line-height: 18px;
-`;
-
-const Popover = styled.div`
-    background: var(--center-channel-bg);
-    border-radius: 4px;
-    border: solid 1px rgba(var(--center-channel-color-rgb), 0.16);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-    color: color.adjust($black, $lightness: 25%);
-    font-family: inherit;
-    max-height: 400px;
-    overflow-y: scroll;
-    padding: 8px 0;
-`;
-
-function Row({
-    readAt,
-    id,
-    isMe,
-    lastPictureUpdate,
-    username,
-}: {
-    readAt: number;
-    id: UserProfile['id'];
-    isMe: boolean;
-    lastPictureUpdate: UserProfile['last_picture_update'];
-    username: UserProfile['username'];
-}) {
-    const getDisplayName = useMemo(makeGetDisplayName, []);
-    const displayName = useSelector((state: GlobalState) => getDisplayName(state, id));
-
-    return (
-        <Item>
-            <Avatar
-                size='sm'
-                url={Client4.getProfilePictureUrl(id, lastPictureUpdate)}
-                username={username}
-            />
-            <Info>
-                <div>
-                    {displayName}
-                    {isMe && (
-                        <>
-                            <Nbsp/>
-                            <FormattedMessage
-                                id={'post_read_receipts.you.read'}
-                                defaultMessage={'(you)'}
-                            />
-                        </>
-                    )}
-                </div>
-                <Span>
-                    <Timestamp value={readAt}/>
-                </Span>
-            </Info>
-        </Item>
-    );
+    readReceipts: ReadReceiptData[];
 }
 
-export default function PostReadReceiptsUserPopover({list, currentUserId}: Props) {
+export default function PostReadReceiptsUserPopover({
+    currentUserId,
+    readReceipts,
+}: Props) {
+    // Sort by read time (most recent first)
+    const sortedReceipts = [...readReceipts].sort((a, b) => b.readAt - a.readAt);
+    
     return (
-        <Popover>
-            <Title>
+        <div className='ReadReceiptPopover'>
+            <div className='ReadReceiptPopover__header'>
                 <FormattedMessage
-                    id={'post_read_receipts.receipts.title'}
-                    defaultMessage={'Read Receipts'}
+                    id='post_read_receipts.popover.header'
+                    defaultMessage='Read by'
                 />
-            </Title>
-            {list.map((item) => (
-                <Row
-                    key={item.user.id}
-                    readAt={item.readAt}
-                    isMe={currentUserId === item.user.id}
-                    id={item.user.id}
-                    lastPictureUpdate={item.user.last_picture_update}
-                    username={item.user.username}
-                />
-            ))}
-        </Popover>
+            </div>
+            <div className='ReadReceiptPopover__body'>
+                {sortedReceipts.map((receipt) => {
+                    const user = receipt.user;
+                    const displayName = getFullName(user) || user.username;
+                    
+                    return (
+                        <div
+                            key={user.id}
+                            className='ReadReceiptPopover__user'
+                        >
+                            <Avatar
+                                size='sm'
+                                userId={user.id}
+                                username={user.username}
+                            />
+                            <div className='ReadReceiptPopover__user-info'>
+                                <div className='ReadReceiptPopover__user-name'>
+                                    {displayName}
+                                </div>
+                                <div className='ReadReceiptPopover__read-time'>
+                                    <FormattedTime
+                                        value={receipt.readAt}
+                                        hour='numeric'
+                                        minute='2-digit'
+                                        hour12={true}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
     );
 }

@@ -19,9 +19,17 @@ func markPostAsRead(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	mlog.Debug("Processing read receipt request", 
+		mlog.String("post_id", c.Params.PostId), 
+		mlog.String("user_id", c.AppContext.Session().UserId))
+
 	// Parse request body
 	var readRequest model.ReadReceiptRequest
 	if err := json.NewDecoder(r.Body).Decode(&readRequest); err != nil {
+		mlog.Warn("Failed to parse read receipt request body", 
+			mlog.String("post_id", c.Params.PostId), 
+			mlog.String("user_id", c.AppContext.Session().UserId),
+			mlog.Err(err))
 		c.SetInvalidParam("body")
 		return
 	}
@@ -31,16 +39,27 @@ func markPostAsRead(c *Context, w http.ResponseWriter, r *http.Request) {
 		readRequest.PostId = c.Params.PostId
 	}
 	if readRequest.PostId != c.Params.PostId {
+		mlog.Warn("Post ID mismatch in read receipt request", 
+			mlog.String("url_post_id", c.Params.PostId), 
+			mlog.String("body_post_id", readRequest.PostId),
+			mlog.String("user_id", c.AppContext.Session().UserId))
 		c.SetInvalidParam("post_id")
 		return
 	}
 	if err := readRequest.IsValid(); err != nil {
+		mlog.Warn("Invalid read receipt request", 
+			mlog.String("post_id", c.Params.PostId), 
+			mlog.String("user_id", c.AppContext.Session().UserId),
+			mlog.Err(err))
 		c.Err = err
 		return
 	}
 
 	// Check permissions - user must be able to read the channel
 	if !c.App.SessionHasPermissionToChannelByPost(*c.AppContext.Session(), c.Params.PostId, model.PermissionReadChannelContent) {
+		mlog.Warn("User lacks permission to mark post as read", 
+			mlog.String("post_id", c.Params.PostId), 
+			mlog.String("user_id", c.AppContext.Session().UserId))
 		c.SetPermissionError(model.PermissionReadChannelContent)
 		return
 	}
@@ -48,9 +67,18 @@ func markPostAsRead(c *Context, w http.ResponseWriter, r *http.Request) {
 	// Create and save the read receipt
 	receipt, err := c.App.SaveReadReceiptForPost(c.AppContext, c.AppContext.Session().UserId, readRequest.PostId, readRequest.ReadAt, readRequest.DeviceId)
 	if err != nil {
+		mlog.Error("Failed to save read receipt", 
+			mlog.String("post_id", c.Params.PostId), 
+			mlog.String("user_id", c.AppContext.Session().UserId),
+			mlog.Err(err))
 		c.Err = err
 		return
 	}
+
+	mlog.Info("Read receipt created successfully", 
+		mlog.String("post_id", c.Params.PostId), 
+		mlog.String("user_id", c.AppContext.Session().UserId),
+		mlog.String("device_id", readRequest.DeviceId))
 
 	// Return the created receipt
 	if receiptJson, jsonErr := receipt.ToJSON(); jsonErr == nil {
@@ -58,6 +86,10 @@ func markPostAsRead(c *Context, w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusCreated)
 		w.Write([]byte(receiptJson))
 	} else {
+		mlog.Error("Failed to marshal read receipt response", 
+			mlog.String("post_id", c.Params.PostId), 
+			mlog.String("user_id", c.AppContext.Session().UserId),
+			mlog.Err(jsonErr))
 		c.Err = model.NewAppError("markPostAsRead", "api.post.mark_read.marshal.app_error", nil, jsonErr.Error(), http.StatusInternalServerError)
 	}
 }
@@ -69,8 +101,15 @@ func unmarkPostAsRead(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	mlog.Debug("Processing unmark read receipt request", 
+		mlog.String("post_id", c.Params.PostId), 
+		mlog.String("user_id", c.AppContext.Session().UserId))
+
 	// Check permissions - user must be able to read the channel
 	if !c.App.SessionHasPermissionToChannelByPost(*c.AppContext.Session(), c.Params.PostId, model.PermissionReadChannelContent) {
+		mlog.Warn("User lacks permission to unmark post as read", 
+			mlog.String("post_id", c.Params.PostId), 
+			mlog.String("user_id", c.AppContext.Session().UserId))
 		c.SetPermissionError(model.PermissionReadChannelContent)
 		return
 	}
@@ -78,9 +117,17 @@ func unmarkPostAsRead(c *Context, w http.ResponseWriter, r *http.Request) {
 	// Delete the read receipt
 	err := c.App.DeleteReadReceiptForPost(c.AppContext, c.AppContext.Session().UserId, c.Params.PostId)
 	if err != nil {
+		mlog.Error("Failed to delete read receipt", 
+			mlog.String("post_id", c.Params.PostId), 
+			mlog.String("user_id", c.AppContext.Session().UserId),
+			mlog.Err(err))
 		c.Err = err
 		return
 	}
+
+	mlog.Info("Read receipt deleted successfully", 
+		mlog.String("post_id", c.Params.PostId), 
+		mlog.String("user_id", c.AppContext.Session().UserId))
 
 	ReturnStatusOK(w)
 }
@@ -122,12 +169,23 @@ func markPostsAsReadBatch(c *Context, w http.ResponseWriter, r *http.Request) {
 	// Parse request body
 	var batchRequest model.ReadReceiptBatchRequest
 	if err := json.NewDecoder(r.Body).Decode(&batchRequest); err != nil {
+		mlog.Warn("Failed to parse batch read receipt request body", 
+			mlog.String("user_id", c.AppContext.Session().UserId),
+			mlog.Err(err))
 		c.SetInvalidParam("body")
 		return
 	}
 
+	mlog.Debug("Processing batch read receipt request", 
+		mlog.String("user_id", c.AppContext.Session().UserId),
+		mlog.Int("post_count", len(batchRequest.PostIds)))
+
 	// Validate request
 	if err := batchRequest.IsValid(); err != nil {
+		mlog.Warn("Invalid batch read receipt request", 
+			mlog.String("user_id", c.AppContext.Session().UserId),
+			mlog.Int("post_count", len(batchRequest.PostIds)),
+			mlog.Err(err))
 		c.Err = err
 		return
 	}
@@ -135,6 +193,9 @@ func markPostsAsReadBatch(c *Context, w http.ResponseWriter, r *http.Request) {
 	// Check permissions for all posts
 	for _, postId := range batchRequest.PostIds {
 		if !c.App.SessionHasPermissionToChannelByPost(*c.AppContext.Session(), postId, model.PermissionReadChannelContent) {
+			mlog.Warn("User lacks permission for post in batch read receipt", 
+				mlog.String("post_id", postId),
+				mlog.String("user_id", c.AppContext.Session().UserId))
 			c.SetPermissionError(model.PermissionReadChannelContent)
 			return
 		}
@@ -143,9 +204,18 @@ func markPostsAsReadBatch(c *Context, w http.ResponseWriter, r *http.Request) {
 	// Process batch read receipts
 	receipts, err := c.App.SaveReadReceiptBatch(c.AppContext, c.AppContext.Session().UserId, &batchRequest)
 	if err != nil {
+		mlog.Error("Failed to save batch read receipts", 
+			mlog.String("user_id", c.AppContext.Session().UserId),
+			mlog.Int("requested_count", len(batchRequest.PostIds)),
+			mlog.Err(err))
 		c.Err = err
 		return
 	}
+
+	mlog.Info("Batch read receipts processed successfully", 
+		mlog.String("user_id", c.AppContext.Session().UserId),
+		mlog.Int("requested_count", len(batchRequest.PostIds)),
+		mlog.Int("processed_count", len(receipts)))
 
 	// Return success with count
 	result := map[string]interface{}{
@@ -235,4 +305,44 @@ func getUserReadReceiptHistory(c *Context, w http.ResponseWriter, r *http.Reques
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(receipts)
+}
+
+// backfillReadReceiptsForChannel creates read receipts for historical messages
+func backfillReadReceiptsForChannel(c *Context, w http.ResponseWriter, r *http.Request) {
+	c.RequireChannelId()
+	if c.Err != nil {
+		return
+	}
+
+	mlog.Info("Backfill read receipts request", 
+		mlog.String("channel_id", c.Params.ChannelId), 
+		mlog.String("user_id", c.AppContext.Session().UserId))
+
+	// Check permissions - user must be able to read the channel
+	if !c.App.SessionHasPermissionToChannel(*c.AppContext.Session(), c.Params.ChannelId, model.PermissionReadChannelContent) {
+		mlog.Warn("User lacks permission to backfill read receipts", 
+			mlog.String("channel_id", c.Params.ChannelId), 
+			mlog.String("user_id", c.AppContext.Session().UserId))
+		c.SetPermissionError(model.PermissionReadChannelContent)
+		return
+	}
+
+	// Trigger the backfill
+	err := c.App.BackfillReadReceiptsForChannel(c.AppContext, c.Params.ChannelId)
+	if err != nil {
+		mlog.Error("Failed to backfill read receipts", 
+			mlog.String("channel_id", c.Params.ChannelId), 
+			mlog.String("user_id", c.AppContext.Session().UserId),
+			mlog.Err(err))
+		c.Err = err
+		return
+	}
+
+	mlog.Info("Read receipts backfill completed successfully", 
+		mlog.String("channel_id", c.Params.ChannelId), 
+		mlog.String("user_id", c.AppContext.Session().UserId))
+
+	// Return success
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`{"status": "completed"}`))
 }

@@ -1358,6 +1358,13 @@ export function markPostAsRead(postId: string, readAt?: number, deviceId?: strin
     return async (dispatch, getState) => {
         const userId = getCurrentUserId(getState());
 
+        console.log('READ_RECEIPTS_DEBUG: markPostAsRead called', {
+            postId,
+            userId,
+            readAt,
+            deviceId,
+        });
+
         dispatch({
             type: PostTypes.MARK_POST_AS_READ_REQUEST,
             data: {postId, userId},
@@ -1365,8 +1372,11 @@ export function markPostAsRead(postId: string, readAt?: number, deviceId?: strin
 
         let data;
         try {
+            console.log('READ_RECEIPTS_DEBUG: Making API call to Client4.markPostAsRead');
             data = await Client4.markPostAsRead(postId, userId, readAt, deviceId);
+            console.log('READ_RECEIPTS_DEBUG: API call successful', {data});
         } catch (error) {
+            console.error('READ_RECEIPTS_DEBUG: API call failed', {error});
             forceLogoutIfNecessary(error, dispatch, getState);
             dispatch(logError(error));
             dispatch({
@@ -1386,6 +1396,7 @@ export function markPostAsRead(postId: string, readAt?: number, deviceId?: strin
             data,
         });
 
+        console.log('READ_RECEIPTS_DEBUG: markPostAsRead completed successfully');
         return {data};
     };
 }
@@ -1575,6 +1586,97 @@ export function receivedReadReceiptSummary(summary: any) {
     return {
         type: PostTypes.RECEIVED_READ_RECEIPT_SUMMARY,
         data: summary,
+    };
+}
+
+// Auto-mark post as read when user views it (for read receipts)
+export function autoMarkPostAsRead(postId: string): ActionFuncAsync {
+    return async (dispatch, getState) => {
+        console.log('READ_RECEIPTS_DEBUG: autoMarkPostAsRead called', {postId});
+        
+        const state = getState();
+        const post = PostSelectors.getPost(state, postId);
+        const currentUserId = getCurrentUserId(state);
+        
+        console.log('READ_RECEIPTS_DEBUG: Basic post data', {
+            postId,
+            currentUserId,
+            hasPost: !!post,
+            postUserId: post?.user_id,
+            channelId: post?.channel_id,
+        });
+        
+        // Don't mark own posts as read
+        if (!post || post.user_id === currentUserId) {
+            console.log('READ_RECEIPTS_DEBUG: Skipping - no post or own post', {
+                hasPost: !!post,
+                isOwnPost: post?.user_id === currentUserId,
+            });
+            return {data: null};
+        }
+        
+        // Check channel type based on configuration
+        const channel = state.entities.channels.channels[post.channel_id];
+        if (!channel) {
+            console.log('READ_RECEIPTS_DEBUG: Skipping - no channel found', {channelId: post.channel_id});
+            return {data: null};
+        }
+        
+        console.log('READ_RECEIPTS_DEBUG: Channel info', {
+            channelId: channel.id,
+            channelType: channel.type,
+            channelName: channel.name || channel.display_name,
+        });
+        
+        // Allow DM and GM channels always, team channels only if enabled
+        const allowedChannelType = channel.type === 'D' || channel.type === 'G';
+        const config = state.entities.general.config;
+        const teamChannelsEnabled = config?.ReadReceiptsEnableTeamChannels === 'true';
+        
+        console.log('READ_RECEIPTS_DEBUG: Channel type validation', {
+            channelType: channel.type,
+            allowedChannelType,
+            teamChannelsEnabled,
+            configExists: !!config,
+            configValue: config?.ReadReceiptsEnableTeamChannels,
+        });
+        
+        if (!allowedChannelType && !teamChannelsEnabled) {
+            console.log('READ_RECEIPTS_DEBUG: Skipping - channel type not allowed and team channels disabled');
+            return {data: null};
+        }
+        
+        if (!allowedChannelType && teamChannelsEnabled) {
+            // Only allow open and private team channels
+            if (channel.type !== 'O' && channel.type !== 'P') {
+                console.log('READ_RECEIPTS_DEBUG: Skipping - team channel not O or P type', {channelType: channel.type});
+                return {data: null};
+            }
+        }
+        
+        // Check if read receipts are enabled
+        const isReadReceiptsEnabled = PostSelectors.isPostReadReceiptsEnabled(state);
+        console.log('READ_RECEIPTS_DEBUG: Read receipts enabled check', {isReadReceiptsEnabled});
+        
+        if (!isReadReceiptsEnabled) {
+            console.log('READ_RECEIPTS_DEBUG: Skipping - read receipts disabled globally');
+            return {data: null};
+        }
+        
+        // Check if already marked as read
+        const isAlreadyRead = PostSelectors.isPostReadByUser(state, postId, currentUserId);
+        console.log('READ_RECEIPTS_DEBUG: Already read check', {isAlreadyRead});
+        
+        if (isAlreadyRead) {
+            console.log('READ_RECEIPTS_DEBUG: Skipping - already marked as read');
+            return {data: null};
+        }
+        
+        // Mark as read with current timestamp
+        const readAt = Date.now();
+        console.log('READ_RECEIPTS_DEBUG: Calling markPostAsRead', {postId, readAt});
+        
+        return dispatch(markPostAsRead(postId, readAt));
     };
 }
 

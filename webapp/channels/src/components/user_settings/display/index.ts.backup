@@ -1,47 +1,33 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {
-connect} from 'react-redux';
-import {
-bindActionCreators} from 'redux';
+import {connect} from 'react-redux';
+import {bindActionCreators} from 'redux';
 import type {Dispatch} from 'redux';
 import timezones from 'timezones.json';
 
-import {
-CollapsedThreads} from '@mattermost/types/config';
+import {CollapsedThreads} from '@mattermost/types/config';
 
+import {savePreferences} from 'mattermost-redux/actions/preferences';
+import {autoUpdateTimezone} from 'mattermost-redux/actions/timezone';
+import {patchUser, updateMe} from 'mattermost-redux/actions/users';
+import {getConfig, getLicense} from 'mattermost-redux/selectors/entities/general';
 import {
-savePreferences} from 'mattermost-redux/actions/preferences';
-import {
-autoUpdateTimezone} from 'mattermost-redux/actions/timezone';
-import {
-patchUser, updateMe} from 'mattermost-redux/actions/users';
-import {
-getConfig, getLicense} from 'mattermost-redux/selectors/entities/general';
-import {
-
     get,
-    getBool,
     isCollapsedThreadsAllowed,
     getCollapsedThreadsPreference,
 } from 'mattermost-redux/selectors/entities/preferences';
 import {
-
     generateCurrentTimezoneLabel,
     getCurrentTimezoneFull,
     getCurrentTimezoneLabel,
     getTimezoneForUserProfile,
 } from 'mattermost-redux/selectors/entities/timezone';
-import {
-getCurrentUserId, getUser} from 'mattermost-redux/selectors/entities/users';
-import {
-getUserCurrentTimezone} from 'mattermost-redux/utils/timezone_utils';
+import {getCurrentUserId, getUser} from 'mattermost-redux/selectors/entities/users';
+import {getUserCurrentTimezone} from 'mattermost-redux/utils/timezone_utils';
 
-import {
-getLanguages, isLanguageAvailable} from 'i18n/i18n';
-import {
-Preferences} from 'utils/constants';
+import {getLanguages, isLanguageAvailable} from 'i18n/i18n';
+import {Preferences} from 'utils/constants';
 
 import type {GlobalState} from 'types/store';
 
@@ -101,7 +87,7 @@ export function makeMapStateToProps() {
             linkPreviewDisplay: get(state, Preferences.CATEGORY_DISPLAY_SETTINGS, Preferences.LINK_PREVIEW_DISPLAY, Preferences.LINK_PREVIEW_DISPLAY_DEFAULT, userPreference),
             oneClickReactionsOnPosts: get(state, Preferences.CATEGORY_DISPLAY_SETTINGS, Preferences.ONE_CLICK_REACTIONS_ENABLED, Preferences.ONE_CLICK_REACTIONS_ENABLED_DEFAULT, userPreference),
             renderEmoticonsAsEmoji: get(state, Preferences.CATEGORY_DISPLAY_SETTINGS, Preferences.RENDER_EMOTICONS_AS_EMOJI, Preferences.RENDER_EMOTICONS_AS_EMOJI_DEFAULT, userPreference),
-            postReadReceiptsEnabled: getBool(state, Preferences.CATEGORY_DISPLAY_SETTINGS, Preferences.POST_READ_RECEIPTS_ENABLED, true, userPreference),
+            postReadReceiptsEnabled: get(state, Preferences.CATEGORY_DISPLAY_SETTINGS, Preferences.POST_READ_RECEIPTS_ENABLED, Preferences.POST_READ_RECEIPTS_ENABLED_DEFAULT, userPreference),
             emojiPickerEnabled,
             lastActiveDisplay,
             lastActiveTimeEnabled,

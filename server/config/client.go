@@ -52,6 +52,9 @@ func GenerateClientConfig(c *model.Config, telemetryID string, license *model.Li
 	props["ExtendSessionLengthWithActivity"] = strconv.FormatBool(*c.ServiceSettings.ExtendSessionLengthWithActivity)
 	props["ManagedResourcePaths"] = *c.ServiceSettings.ManagedResourcePaths
 	props["DeleteAccountLink"] = *c.ServiceSettings.DeleteAccountLink
+	
+	// Read receipts settings
+	props["PostReadReceipts"] = strconv.FormatBool(*c.ServiceSettings.EnableReadReceipts)
 
 	// This setting is only temporary, so keep using the old setting name for the mobile and web apps
 	props["ExperimentalEnablePostMetadata"] = "true"

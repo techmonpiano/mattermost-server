@@ -593,6 +593,12 @@ export function handleEvent(msg) {
     case SocketEvents.THREAD_READ_CHANGED:
         dispatch(handleThreadReadChanged(msg));
         break;
+    case SocketEvents.POST_READ_RECEIPT:
+        handlePostReadReceiptEvent(msg);
+        break;
+    case SocketEvents.POST_READ_RECEIPTS_BATCH:
+        handlePostReadReceiptsBatchEvent(msg);
+        break;
     case SocketEvents.THREAD_UPDATED:
         dispatch(handleThreadUpdated(msg));
         break;
@@ -1962,4 +1968,22 @@ export function handleCustomAttributesDeleted(msg) {
         type: GeneralTypes.CUSTOM_PROFILE_ATTRIBUTE_FIELD_DELETED,
         data: msg.data.field_id,
     };
+}
+
+function handlePostReadReceiptEvent(msg) {
+    const readReceipt = JSON.parse(msg.data.read_receipt);
+    
+    dispatch({
+        type: PostTypes.RECEIVED_READ_RECEIPT,
+        data: readReceipt,
+    });
+}
+
+function handlePostReadReceiptsBatchEvent(msg) {
+    const readReceipts = JSON.parse(msg.data.read_receipts);
+    
+    dispatch({
+        type: PostTypes.RECEIVED_READ_RECEIPTS_BATCH,
+        data: readReceipts,
+    });
 }

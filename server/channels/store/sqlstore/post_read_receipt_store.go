@@ -8,12 +8,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
-	"time"
 
 	sq "github.com/mattermost/squirrel"
 	"github.com/pkg/errors"
 
 	"github.com/mattermost/mattermost/server/public/model"
+	"github.com/mattermost/mattermost/server/public/shared/mlog"
 	"github.com/mattermost/mattermost/server/public/shared/request"
 	"github.com/mattermost/mattermost/server/v8/channels/store"
 )
@@ -29,6 +29,11 @@ func newSqlPostReadReceiptStore(sqlStore *SqlStore) store.PostReadReceiptStore {
 // Core read receipt operations
 
 func (s *SqlPostReadReceiptStore) SaveReadReceipt(rctx request.CTX, receipt *model.PostReadReceipt) (*model.PostReadReceipt, error) {
+	mlog.Debug("Saving read receipt to database", 
+		mlog.String("post_id", receipt.PostId), 
+		mlog.String("user_id", receipt.UserId),
+		mlog.String("channel_id", receipt.ChannelId))
+	
 	receipt.PreSave()
 
 	query := s.getQueryBuilder().
@@ -47,18 +52,36 @@ func (s *SqlPostReadReceiptStore) SaveReadReceipt(rctx request.CTX, receipt *mod
 
 	queryString, args, err := query.ToSql()
 	if err != nil {
+		mlog.Error("Failed to build read receipt save query", 
+			mlog.String("post_id", receipt.PostId), 
+			mlog.String("user_id", receipt.UserId),
+			mlog.Err(err))
 		return nil, errors.Wrap(err, "save_read_receipt_tosql")
 	}
 
-	if _, err := s.GetMasterX().Exec(queryString, args...); err != nil {
+	if _, err := s.GetMaster().Exec(queryString, args...); err != nil {
+		mlog.Error("Failed to execute read receipt save query", 
+			mlog.String("post_id", receipt.PostId), 
+			mlog.String("user_id", receipt.UserId),
+			mlog.Err(err))
 		return nil, errors.Wrap(err, "save_read_receipt")
 	}
+
+	mlog.Debug("Read receipt saved successfully", 
+		mlog.String("post_id", receipt.PostId), 
+		mlog.String("user_id", receipt.UserId))
 
 	return receipt, nil
 }
 
 func (s *SqlPostReadReceiptStore) SaveReadReceiptBatch(rctx request.CTX, batch *model.PostReadReceiptBatch) error {
+	mlog.Debug("Processing batch read receipt save", 
+		mlog.String("user_id", batch.UserId), 
+		mlog.String("channel_id", batch.ChannelId),
+		mlog.Int("post_count", len(batch.PostIds)))
+	
 	if len(batch.PostIds) == 0 {
+		mlog.Debug("Empty batch read receipt request, skipping")
 		return nil
 	}
 
@@ -90,13 +113,28 @@ func (s *SqlPostReadReceiptStore) SaveReadReceiptBatch(rctx request.CTX, batch *
 
 	queryString, args, err := query.ToSql()
 	if err != nil {
+		mlog.Error("Failed to build batch read receipt save query", 
+			mlog.String("user_id", batch.UserId), 
+			mlog.String("channel_id", batch.ChannelId),
+			mlog.Int("post_count", len(batch.PostIds)),
+			mlog.Err(err))
 		return errors.Wrap(err, "save_read_receipt_batch_tosql")
 	}
 
-	if _, err := s.GetMasterX().Exec(queryString, args...); err != nil {
+	if _, err := s.GetMaster().Exec(queryString, args...); err != nil {
+		mlog.Error("Failed to execute batch read receipt save query", 
+			mlog.String("user_id", batch.UserId), 
+			mlog.String("channel_id", batch.ChannelId),
+			mlog.Int("post_count", len(batch.PostIds)),
+			mlog.Err(err))
 		return errors.Wrap(err, "save_read_receipt_batch")
 	}
 
+	mlog.Debug("Batch read receipts saved successfully", 
+		mlog.String("user_id", batch.UserId), 
+		mlog.String("channel_id", batch.ChannelId),
+		mlog.Int("post_count", len(batch.PostIds)))
+	
 	return nil
 }
 
@@ -115,7 +153,7 @@ func (s *SqlPostReadReceiptStore) GetReadReceipt(postID, userID string) (*model.
 	}
 
 	var receipt model.PostReadReceipt
-	if err := s.GetReplicaX().Get(&receipt, queryString, args...); err != nil {
+	if err := s.GetReplica().Get(&receipt, queryString, args...); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, store.NewErrNotFound("PostReadReceipt", fmt.Sprintf("postId=%s, userId=%s", postID, userID))
 		}
@@ -126,6 +164,10 @@ func (s *SqlPostReadReceiptStore) GetReadReceipt(postID, userID string) (*model.
 }
 
 func (s *SqlPostReadReceiptStore) GetReadReceiptsForPost(postID string, includeDeleted bool) ([]*model.PostReadReceipt, error) {
+	mlog.Debug("Getting read receipts for post", 
+		mlog.String("post_id", postID), 
+		mlog.Bool("include_deleted", includeDeleted))
+	
 	query := s.getQueryBuilder().
 		Select("PostId", "UserId", "ChannelId", "ReadAt", "CreateAt", "DeviceId", "DeviceType", "SessionId").
 		From("PostReadReceipts").
@@ -138,9 +180,16 @@ func (s *SqlPostReadReceiptStore) GetReadReceiptsForPost(postID string, includeD
 	}
 
 	var receipts []*model.PostReadReceipt
-	if err := s.GetReplicaX().Select(&receipts, queryString, args...); err != nil {
+	if err := s.GetReplica().Select(&receipts, queryString, args...); err != nil {
+		mlog.Error("Failed to get read receipts for post", 
+			mlog.String("post_id", postID),
+			mlog.Err(err))
 		return nil, errors.Wrapf(err, "get_read_receipts_for_post postId=%s", postID)
 	}
+
+	mlog.Debug("Retrieved read receipts for post", 
+		mlog.String("post_id", postID), 
+		mlog.Int("receipt_count", len(receipts)))
 
 	return receipts, nil
 }
@@ -162,7 +211,7 @@ func (s *SqlPostReadReceiptStore) GetReadReceiptsForPosts(postIDs []string) (map
 	}
 
 	var receipts []*model.PostReadReceipt
-	if err := s.GetReplicaX().Select(&receipts, queryString, args...); err != nil {
+	if err := s.GetReplica().Select(&receipts, queryString, args...); err != nil {
 		return nil, errors.Wrap(err, "get_read_receipts_for_posts")
 	}
 
@@ -176,6 +225,11 @@ func (s *SqlPostReadReceiptStore) GetReadReceiptsForPosts(postIDs []string) (map
 }
 
 func (s *SqlPostReadReceiptStore) GetReadReceiptsForUser(userID string, channelID string, limit int) ([]*model.PostReadReceipt, error) {
+	mlog.Debug("Getting read receipts for user", 
+		mlog.String("user_id", userID), 
+		mlog.String("channel_id", channelID),
+		mlog.Int("limit", limit))
+	
 	query := s.getQueryBuilder().
 		Select("PostId", "UserId", "ChannelId", "ReadAt", "CreateAt", "DeviceId", "DeviceType", "SessionId").
 		From("PostReadReceipts").
@@ -193,9 +247,18 @@ func (s *SqlPostReadReceiptStore) GetReadReceiptsForUser(userID string, channelI
 	}
 
 	var receipts []*model.PostReadReceipt
-	if err := s.GetReplicaX().Select(&receipts, queryString, args...); err != nil {
+	if err := s.GetReplica().Select(&receipts, queryString, args...); err != nil {
+		mlog.Error("Failed to get read receipts for user", 
+			mlog.String("user_id", userID),
+			mlog.String("channel_id", channelID),
+			mlog.Err(err))
 		return nil, errors.Wrapf(err, "get_read_receipts_for_user userId=%s", userID)
 	}
+
+	mlog.Debug("Retrieved read receipts for user", 
+		mlog.String("user_id", userID), 
+		mlog.String("channel_id", channelID),
+		mlog.Int("receipt_count", len(receipts)))
 
 	return receipts, nil
 }
@@ -217,7 +280,7 @@ func (s *SqlPostReadReceiptStore) GetReadReceiptsForChannel(channelID string, si
 	}
 
 	var receipts []*model.PostReadReceipt
-	if err := s.GetReplicaX().Select(&receipts, queryString, args...); err != nil {
+	if err := s.GetReplica().Select(&receipts, queryString, args...); err != nil {
 		return nil, errors.Wrapf(err, "get_read_receipts_for_channel channelId=%s", channelID)
 	}
 
@@ -227,6 +290,10 @@ func (s *SqlPostReadReceiptStore) GetReadReceiptsForChannel(channelID string, si
 // Delete operations
 
 func (s *SqlPostReadReceiptStore) DeleteReadReceipt(postID, userID string) error {
+	mlog.Debug("Deleting read receipt", 
+		mlog.String("post_id", postID), 
+		mlog.String("user_id", userID))
+	
 	query := s.getQueryBuilder().
 		Delete("PostReadReceipts").
 		Where(sq.And{
@@ -236,12 +303,24 @@ func (s *SqlPostReadReceiptStore) DeleteReadReceipt(postID, userID string) error
 
 	queryString, args, err := query.ToSql()
 	if err != nil {
+		mlog.Error("Failed to build delete read receipt query", 
+			mlog.String("post_id", postID), 
+			mlog.String("user_id", userID),
+			mlog.Err(err))
 		return errors.Wrap(err, "delete_read_receipt_tosql")
 	}
 
-	if _, err := s.GetMasterX().Exec(queryString, args...); err != nil {
+	if _, err := s.GetMaster().Exec(queryString, args...); err != nil {
+		mlog.Error("Failed to execute delete read receipt query", 
+			mlog.String("post_id", postID), 
+			mlog.String("user_id", userID),
+			mlog.Err(err))
 		return errors.Wrapf(err, "delete_read_receipt postId=%s userId=%s", postID, userID)
 	}
+
+	mlog.Debug("Read receipt deleted successfully", 
+		mlog.String("post_id", postID), 
+		mlog.String("user_id", userID))
 
 	return nil
 }
@@ -256,7 +335,7 @@ func (s *SqlPostReadReceiptStore) DeleteReadReceiptsForUser(userID string) error
 		return errors.Wrap(err, "delete_read_receipts_for_user_tosql")
 	}
 
-	if _, err := s.GetMasterX().Exec(queryString, args...); err != nil {
+	if _, err := s.GetMaster().Exec(queryString, args...); err != nil {
 		return errors.Wrapf(err, "delete_read_receipts_for_user userId=%s", userID)
 	}
 
@@ -273,7 +352,7 @@ func (s *SqlPostReadReceiptStore) DeleteReadReceiptsForPost(postID string) error
 		return errors.Wrap(err, "delete_read_receipts_for_post_tosql")
 	}
 
-	if _, err := s.GetMasterX().Exec(queryString, args...); err != nil {
+	if _, err := s.GetMaster().Exec(queryString, args...); err != nil {
 		return errors.Wrapf(err, "delete_read_receipts_for_post postId=%s", postID)
 	}
 
@@ -290,7 +369,7 @@ func (s *SqlPostReadReceiptStore) DeleteReadReceiptsForChannel(channelID string)
 		return errors.Wrap(err, "delete_read_receipts_for_channel_tosql")
 	}
 
-	if _, err := s.GetMasterX().Exec(queryString, args...); err != nil {
+	if _, err := s.GetMaster().Exec(queryString, args...); err != nil {
 		return errors.Wrapf(err, "delete_read_receipts_for_channel channelId=%s", channelID)
 	}
 
@@ -318,7 +397,7 @@ func (s *SqlPostReadReceiptStore) GetReadReceiptInfo(postID string) (*model.Post
 		return nil, errors.Wrap(queryErr, "get_read_receipt_info_post_tosql")
 	}
 
-	if err := s.GetReplicaX().Get(&channelId, queryString, args...); err != nil {
+	if err := s.GetReplica().Get(&channelId, queryString, args...); err != nil {
 		return nil, errors.Wrapf(err, "get_read_receipt_info_post postId=%s", postID)
 	}
 
@@ -334,7 +413,7 @@ func (s *SqlPostReadReceiptStore) GetReadReceiptInfo(postID string) (*model.Post
 	}
 
 	var totalUsers int
-	if err := s.GetReplicaX().Get(&totalUsers, memberQueryString, memberArgs...); err != nil {
+	if err := s.GetReplica().Get(&totalUsers, memberQueryString, memberArgs...); err != nil {
 		return nil, errors.Wrapf(err, "get_read_receipt_info_members channelId=%s", channelId)
 	}
 
@@ -392,7 +471,7 @@ func (s *SqlPostReadReceiptStore) GetReadReceiptSummary(postID string) (*model.P
 	}
 
 	var summary model.PostReadReceiptSummary
-	if err := s.GetReplicaX().Get(&summary, queryString, args...); err != nil {
+	if err := s.GetReplica().Get(&summary, queryString, args...); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, store.NewErrNotFound("PostReadReceiptSummary", postID)
 		}
@@ -419,7 +498,7 @@ func (s *SqlPostReadReceiptStore) GetReadReceiptSummariesForChannel(channelID st
 	}
 
 	var summaries []*model.PostReadReceiptSummary
-	if err := s.GetReplicaX().Select(&summaries, queryString, args...); err != nil {
+	if err := s.GetReplica().Select(&summaries, queryString, args...); err != nil {
 		return nil, errors.Wrapf(err, "get_read_receipt_summaries_for_channel channelId=%s", channelID)
 	}
 
@@ -446,7 +525,7 @@ func (s *SqlPostReadReceiptStore) UpdateReadReceiptSummary(summary *model.PostRe
 		return errors.Wrap(err, "update_read_receipt_summary_tosql")
 	}
 
-	if _, err := s.GetMasterX().Exec(queryString, args...); err != nil {
+	if _, err := s.GetMaster().Exec(queryString, args...); err != nil {
 		return errors.Wrapf(err, "update_read_receipt_summary postId=%s", summary.PostId)
 	}
 
@@ -473,7 +552,7 @@ func (s *SqlPostReadReceiptStore) CleanupOldReadReceipts(daysOld int) (int64, er
 		return 0, errors.Wrap(err, "cleanup_old_read_receipts_tosql")
 	}
 
-	result, err := s.GetMasterX().Exec(queryString, args...)
+	result, err := s.GetMaster().Exec(queryString, args...)
 	if err != nil {
 		return 0, errors.Wrap(err, "cleanup_old_read_receipts")
 	}
@@ -497,7 +576,7 @@ func (s *SqlPostReadReceiptStore) GetReadReceiptStats(channelID string) (map[str
 	}
 
 	var totalReceipts int
-	if err := s.GetReplicaX().Get(&totalReceipts, countQueryString, countArgs...); err != nil {
+	if err := s.GetReplica().Get(&totalReceipts, countQueryString, countArgs...); err != nil {
 		return nil, errors.Wrap(err, "get_read_receipt_stats_count")
 	}
 
@@ -523,7 +602,7 @@ func (s *SqlPostReadReceiptStore) SaveReadReceiptAuditLog(audit *model.ReadRecei
 		return errors.Wrap(err, "save_read_receipt_audit_log_tosql")
 	}
 
-	if _, err := s.GetMasterX().Exec(queryString, args...); err != nil {
+	if _, err := s.GetMaster().Exec(queryString, args...); err != nil {
 		return errors.Wrap(err, "save_read_receipt_audit_log")
 	}
 
@@ -547,7 +626,7 @@ func (s *SqlPostReadReceiptStore) GetReadReceiptAuditLogs(userID string, since i
 		return nil, errors.Wrap(err, "get_read_receipt_audit_logs_tosql")
 	}
 
-	rows, err := s.GetReplicaX().Query(queryString, args...)
+	rows, err := s.GetReplica().Query(queryString, args...)
 	if err != nil {
 		return nil, errors.Wrap(err, "get_read_receipt_audit_logs")
 	}
@@ -586,7 +665,7 @@ func (s *SqlPostReadReceiptStore) AnonymizeReadReceiptsForUser(userID string) er
 		return errors.Wrap(err, "anonymize_read_receipts_for_user_tosql")
 	}
 
-	if _, err := s.GetMasterX().Exec(queryString, args...); err != nil {
+	if _, err := s.GetMaster().Exec(queryString, args...); err != nil {
 		return errors.Wrapf(err, "anonymize_read_receipts_for_user userId=%s", userID)
 	}
 
@@ -633,7 +712,7 @@ func (s *SqlPostReadReceiptStore) IsPostReadByUser(postID, userID string) (bool,
 	}
 
 	var result int
-	err = s.GetReplicaX().Get(&result, queryString, args...)
+	err = s.GetReplica().Get(&result, queryString, args...)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return false, nil
@@ -661,7 +740,7 @@ func (s *SqlPostReadReceiptStore) GetUnreadPostsCount(channelID, userID string, 
 	}
 
 	var count int64
-	if err := s.GetReplicaX().Get(&count, queryString, args...); err != nil {
+	if err := s.GetReplica().Get(&count, queryString, args...); err != nil {
 		return 0, errors.Wrapf(err, "get_unread_posts_count channelId=%s userId=%s", channelID, userID)
 	}
 
@@ -683,7 +762,7 @@ func (s *SqlPostReadReceiptStore) GetLastReadTime(channelID, userID string) (int
 	}
 
 	var lastRead sql.NullInt64
-	if err := s.GetReplicaX().Get(&lastRead, queryString, args...); err != nil {
+	if err := s.GetReplica().Get(&lastRead, queryString, args...); err != nil {
 		return 0, errors.Wrapf(err, "get_last_read_time channelId=%s userId=%s", channelID, userID)
 	}
 

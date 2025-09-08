@@ -50,6 +50,7 @@ const (
 	// - PreferenceNameColorizeUsernames
 	// - PreferenceNameChannelDisplayMode
 	// - PreferenceNameNameFormat
+	// - PreferenceNamePostReadReceiptsEnabled
 	PreferenceCategoryDisplaySettings = "display_settings"
 	// PreferenceCategorySystemNotice is used store system admin notices.
 	// Possible Name values are not defined here. It can be anything with the notice name.
@@ -85,6 +86,7 @@ const (
 	PreferenceNameColorizeUsernames       = "colorize_usernames"
 	PreferenceNameNameFormat              = "name_format"
 	PreferenceNameUseMilitaryTime         = "use_military_time"
+	PreferenceNamePostReadReceiptsEnabled = "post_read_receipts_enabled"
 
 	PreferenceNameShowUnreadSection = "show_unread_section"
 	PreferenceLimitVisibleDmsGms    = "limit_visible_dms_gms"

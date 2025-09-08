@@ -99,6 +99,7 @@ export type Props = {
         closeRightHandSide: () => void;
         selectPostCard: (post: Post) => void;
         setRhsExpanded: (rhsExpanded: boolean) => void;
+        autoMarkPostAsRead: (postId: string) => void;
     };
     timestampProps?: Partial<TimestampProps>;
     shouldHighlight?: boolean;
@@ -216,6 +217,57 @@ function PostComponent(props: Props) {
             document.removeEventListener('keyup', handleA11yKeyboardFocus);
         };
     }, [handleA11yKeyboardFocus]);
+
+    // Auto-mark post as read when it becomes visible (for read receipts)
+    useEffect(() => {
+        console.log('READ_RECEIPTS_DEBUG: useEffect called', {
+            postId: post.id,
+            isPostReadReceiptsEnabled: props.isPostReadReceiptsEnabled,
+            hasPostRef: !!postRef.current,
+            channelType: props.channelType,
+        });
+
+        if (!props.isPostReadReceiptsEnabled || !postRef.current) {
+            console.log('READ_RECEIPTS_DEBUG: Skipping observer setup', {
+                isPostReadReceiptsEnabled: props.isPostReadReceiptsEnabled,
+                hasPostRef: !!postRef.current,
+            });
+            return;
+        }
+
+        console.log('READ_RECEIPTS_DEBUG: Setting up IntersectionObserver for post', post.id);
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                entries.forEach((entry) => {
+                    console.log('READ_RECEIPTS_DEBUG: IntersectionObserver callback', {
+                        postId: post.id,
+                        isIntersecting: entry.isIntersecting,
+                        intersectionRatio: entry.intersectionRatio,
+                        boundingClientRect: entry.boundingClientRect,
+                    });
+
+                    if (entry.isIntersecting && entry.intersectionRatio > 0.1) { // Lowered threshold to 0.1 for testing
+                        console.log('READ_RECEIPTS_DEBUG: Post is visible, calling autoMarkPostAsRead', post.id);
+                        props.actions.autoMarkPostAsRead(post.id);
+                    }
+                });
+            },
+            {
+                root: null, // viewport
+                rootMargin: '0px',
+                threshold: [0.1, 0.5, 1.0], // Multiple thresholds for better debugging
+            }
+        );
+
+        observer.observe(postRef.current);
+        console.log('READ_RECEIPTS_DEBUG: Observer attached to post', post.id);
+
+        return () => {
+            console.log('READ_RECEIPTS_DEBUG: Cleaning up observer for post', post.id);
+            observer.disconnect();
+        };
+    }, [post.id, props.isPostReadReceiptsEnabled, props.actions.autoMarkPostAsRead, props.channelType]);
 
     const hasSameRoot = (props: Props) => {
         if (props.isFirstReply) {
@@ -660,14 +712,13 @@ function PostComponent(props: Props) {
                                         postId={post.id}
                                     />
                                 )}
-                                {props.isPostReadReceiptsEnabled && (props.channelType === Constants.DM_CHANNEL || props.channelType === Constants.GM_CHANNEL) && (
-                                    <PostReadReceipts
-                                        authorId={post.user_id}
-                                        isDeleted={post.state === Posts.POST_DELETED}
-                                        postId={post.id}
-                                    />
-                                )}
                                 {showReactions && <ReactionList post={post}/>}
+                                <PostReadReceipts
+                                    postId={post.id}
+                                    channelId={post.channel_id}
+                                    hasReactions={showReactions}
+                                    showDivider={showReactions}
+                                />
                             </div>
                             {threadFooter}
                         </div>

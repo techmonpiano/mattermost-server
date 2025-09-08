@@ -466,6 +466,7 @@ type ServiceSettings struct {
 	ReadReceiptsEnableDeviceTracking                  *bool   `access:"experimental_features"`
 	ReadReceiptsThrottleIntervalMs                    *int    `access:"experimental_features"`
 	ReadReceiptsBatchWindowMs                         *int    `access:"experimental_features"`
+	ReadReceiptsEnableTeamChannels                    *bool   `access:"experimental_features"`
 }
 
 var MattermostGiphySdkKey string
@@ -1049,6 +1050,10 @@ func (s *ServiceSettings) SetDefaults(isUpdate bool) {
 	
 	if s.ReadReceiptsBatchWindowMs == nil {
 		s.ReadReceiptsBatchWindowMs = NewPointer(100)
+	}
+	
+	if s.ReadReceiptsEnableTeamChannels == nil {
+		s.ReadReceiptsEnableTeamChannels = NewPointer(false)
 	}
 }
 
