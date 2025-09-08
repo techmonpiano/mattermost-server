@@ -608,9 +608,9 @@ export function isPostAcknowledgementsEnabled(state: GlobalState) {
 }
 
 export function isPostReadReceiptsEnabled(state: GlobalState) {
-    // TEMPORARY BANDAID: Enable read receipts for demonstration
-    // TODO: Properly implement server-side PostReadReceipts config mapping
-    return true; // getConfig(state).PostReadReceipts === 'true';
+    // Check if read receipts are enabled via user preferences
+    // This integrates with the user's "Show read receipts" setting in Display preferences
+    return getBool(state, Preferences.CATEGORY_DISPLAY_SETTINGS, Preferences.POST_READ_RECEIPTS_ENABLED, true);
 }
 
 export function getAllowPersistentNotifications(state: GlobalState) {
