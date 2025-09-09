@@ -48,14 +48,6 @@ func (api *API) InitPost() {
 	api.BaseRoutes.PostForUser.Handle("/ack", api.APISessionRequired(acknowledgePost)).Methods(http.MethodPost)
 	api.BaseRoutes.PostForUser.Handle("/ack", api.APISessionRequired(unacknowledgePost)).Methods(http.MethodDelete)
 
-	// Read receipts endpoints
-	api.BaseRoutes.Post.Handle("/read", api.APISessionRequired(markPostAsRead)).Methods(http.MethodPost)
-	api.BaseRoutes.Post.Handle("/read", api.APISessionRequired(unmarkPostAsRead)).Methods(http.MethodDelete)
-	api.BaseRoutes.Post.Handle("/receipts", api.APISessionRequired(getPostReadReceipts)).Methods(http.MethodGet)
-	api.BaseRoutes.Posts.Handle("/read/batch", api.APISessionRequired(markPostsAsReadBatch)).Methods(http.MethodPost)
-	api.BaseRoutes.ChannelForUser.Handle("/read_receipts", api.APISessionRequired(getChannelReadReceiptSummary)).Methods(http.MethodGet)
-	api.BaseRoutes.UserForUser.Handle("/read_receipts", api.APISessionRequired(getUserReadReceiptHistory)).Methods(http.MethodGet)
-	api.BaseRoutes.Channel.Handle("/read_receipts/backfill", api.APISessionRequired(backfillReadReceiptsForChannel)).Methods(http.MethodPost)
 
 	api.BaseRoutes.Post.Handle("/move", api.APISessionRequired(moveThread)).Methods(http.MethodPost)
 }

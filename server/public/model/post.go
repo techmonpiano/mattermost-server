@@ -121,7 +121,6 @@ type Post struct {
 	Participants    []*User                  `json:"participants"`
 	IsFollowing     *bool                    `json:"is_following,omitempty"` // for root posts in collapsed thread mode indicates if the current user is following this thread
 	Metadata        *PostMetadata            `json:"metadata,omitempty"`
-	ReadReceiptInfo *PostReadReceiptInfo     `json:"read_receipt_info,omitempty"` // read receipt information for DMs and GMs only
 }
 
 func (o *Post) Auditable() map[string]any {

@@ -102,7 +102,6 @@ type SqlStoreStores struct {
 	notifyAdmin                store.NotifyAdminStore
 	postPriority               store.PostPriorityStore
 	postAcknowledgement        store.PostAcknowledgementStore
-	postReadReceipt            store.PostReadReceiptStore
 	postPersistentNotification store.PostPersistentNotificationStore
 	desktopTokens              store.DesktopTokensStore
 	channelBookmarks           store.ChannelBookmarkStore
@@ -253,7 +252,6 @@ func New(settings model.SqlSettings, logger mlog.LoggerIFace, metrics einterface
 	store.stores.notifyAdmin = newSqlNotifyAdminStore(store)
 	store.stores.postPriority = newSqlPostPriorityStore(store)
 	store.stores.postAcknowledgement = newSqlPostAcknowledgementStore(store)
-	store.stores.postReadReceipt = newSqlPostReadReceiptStore(store)
 	store.stores.postPersistentNotification = newSqlPostPersistentNotificationStore(store)
 	store.stores.desktopTokens = newSqlDesktopTokensStore(store, metrics)
 	store.stores.channelBookmarks = newSqlChannelBookmarkStore(store)
@@ -854,9 +852,6 @@ func (ss *SqlStore) PostAcknowledgement() store.PostAcknowledgementStore {
 	return ss.stores.postAcknowledgement
 }
 
-func (ss *SqlStore) PostReadReceipt() store.PostReadReceiptStore {
-	return ss.stores.postReadReceipt
-}
 
 func (ss *SqlStore) PostPersistentNotification() store.PostPersistentNotificationStore {
 	return ss.stores.postPersistentNotification
